@@ -243,49 +243,52 @@
     }
   }
 
-  // ==== スポーンパターン ====
+  // ==== スポーンパターン（難易度アップ） ====
   let patternId = 0, patternTime = 0;
   function nextPattern(){ patternId = (patternId + 1) % 4; patternTime = 0; }
   function spawnObstacle(dt){
     patternTime += dt;
-    const baseVy = 2.2 + Math.min(6.0, (elapsed/1000)*0.04);
+
+    // 速度：初速↑、時間増加↑、上限↑
+    const baseVy = 3.0 + Math.min(7.5, (elapsed/1000) * 0.06);
     const vy = baseVy * (slowT>0 ? 0.55 : 1.0);
 
     switch(patternId){
-      case 0: // ランダム雨
+      case 0: // ランダム雨：サイズ幅↑、出現間隔↓
         if (spawnT<=0){
-          rects.push({ x:rand(0,W-24), y:-40, w:rand(18,46), h:rand(14,36), vy:vy });
-          spawnT += clamp(850 - elapsed*0.05, 350, 850);
+          rects.push({ x:rand(0,W-24), y:-40, w:rand(12,64), h:rand(12,44), vy:vy });
+          spawnT += clamp(720 - elapsed*0.07, 240, 720);
         }
         break;
-      case 1: // レーン落下
+      case 1: // レーン落下：サイズ幅↑、間隔↓
         if (spawnT<=0){
           const lanes = irand(4,6);
           const laneW = W/lanes;
           const use = irand(1,Math.min(3,lanes-1));
           for(let i=0;i<use;i++){
             const lane = irand(0,lanes-1);
-            rects.push({ x: lane*laneW + rand(6, laneW-32), y:-40, w:rand(24,36), h:rand(14,26), vy:vy });
+            rects.push({ x: lane*laneW + rand(6, laneW-32), y:-40, w:rand(20,44), h:rand(12,32), vy:vy });
           }
-          spawnT += 520;
+          spawnT += 460;
         }
         break;
-      case 2: // 壁＋スリット
+      case 2: // 壁＋スリット：壁厚みに少し幅、間隔↓
         if (spawnT<=0){
-          const gap = rand(60,110);
+          const gap = rand(60,110); // ギャップは据え置き
           const slitX = rand(0, W-gap);
-          rects.push({ x:0, y:-30, w:slitX, h:20, vy:vy });
-          rects.push({ x:slitX+gap, y:-30, w:W-(slitX+gap), h:20, vy:vy });
-          spawnT += 900;
+          const h = rand(18,28);    // 壁の縦厚みにばらつき
+          rects.push({ x:0, y:-30, w:slitX, h:h, vy:vy });
+          rects.push({ x:slitX+gap, y:-30, w:W-(slitX+gap), h:h, vy:vy });
+          spawnT += 820;
         }
         break;
-      case 3: // バースト
+      case 3: // バースト：サイズ幅↑、間隔↓
         if (spawnT<=0){
           const cx = rand(40, W-40);
           for(let i=0;i<5;i++){
-            rects.push({ x: clamp(cx+rand(-50,50),0,W-28), y:-40 - i*22, w:rand(18,32), h:16, vy: vy*1.05 });
+            rects.push({ x: clamp(cx+rand(-50,50),0,W-28), y:-40 - i*22, w:rand(14,40), h:16, vy: vy*1.08 });
           }
-          spawnT += 700;
+          spawnT += 600;
         }
         break;
     }
@@ -315,8 +318,8 @@
     shakeMag = Math.max(shakeMag, mag);
   }
 
-  // ==== 入力（←ここに“指の上側オフセット”を実装） ====
-  const FINGER_OFFSET_TOUCH = 24; // タッチ時は自機を指より24pxだけ上に表示（好みに応じて調整）
+  // ==== 入力（指の上側オフセット 強化版） ====
+  const FINGER_OFFSET_TOUCH = 60; // ← 24px の約2.5倍
   let useTilt = !!settings.tilt;
 
   function setPlayerFromPointer(e){
@@ -324,7 +327,7 @@
     let x = e.clientX - r.left;
     let y = e.clientY - r.top;
 
-    // タッチ操作のときだけ、指に隠れないように少し上へずらす
+    // タッチ操作のときだけ、指に隠れないように上へずらす
     if (e.pointerType === 'touch') {
       y -= FINGER_OFFSET_TOUCH;
     }
@@ -362,6 +365,10 @@
   }
 
   // ==== 一時停止・設定 ====
+  const settingsRoot = document.getElementById('settings');
+  function openSettings(){ settingsRoot.style.display = 'flex'; }
+  function closeSettingsPanel(){ settingsRoot.style.display = 'none'; }
+
   pauseBtn.addEventListener('click', function(){
     if (!running) return;
     paused = !paused;
@@ -383,9 +390,6 @@
   optHue.addEventListener('change', function(){ settings.hue = !!optHue.checked; saveSettings(); });
   optContrast.addEventListener('change', function(){ settings.contrast = !!optContrast.checked; saveSettings(); });
   optTilt.addEventListener('change', function(){ settings.tilt = !!optTilt.checked; useTilt = !!settings.tilt; if (useTilt) enableTilt(); saveSettings(); });
-
-  function openSettings(){ settingsRoot.style.display = 'flex'; }
-  function closeSettingsPanel(){ settingsRoot.style.display = 'none'; }
 
   // ==== 開始/再開画面 ====
   function showStart(){
