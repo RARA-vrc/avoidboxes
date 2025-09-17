@@ -315,15 +315,24 @@
     shakeMag = Math.max(shakeMag, mag);
   }
 
-  // ==== 入力 ====
+  // ==== 入力（←ここに“指の上側オフセット”を実装） ====
+  const FINGER_OFFSET_TOUCH = 24; // タッチ時は自機を指より24pxだけ上に表示（好みに応じて調整）
   let useTilt = !!settings.tilt;
+
   function setPlayerFromPointer(e){
     const r = cvs.getBoundingClientRect();
-    const x = e.clientX - r.left;
-    const y = e.clientY - r.top;
+    let x = e.clientX - r.left;
+    let y = e.clientY - r.top;
+
+    // タッチ操作のときだけ、指に隠れないように少し上へずらす
+    if (e.pointerType === 'touch') {
+      y -= FINGER_OFFSET_TOUCH;
+    }
+
     player.x = clamp(x, player.r, W - player.r);
     player.y = clamp(y, player.r, H - player.r);
   }
+
   addEventListener('pointerdown', function(e){ if (running && !paused) setPlayerFromPointer(e); }, {passive:true});
   addEventListener('pointermove', function(e){
     if (!running || paused) return;
