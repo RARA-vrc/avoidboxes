@@ -6,12 +6,7 @@
 <meta name="theme-color" content="#0b0b10" />
 <title>避けゲーDX</title>
 <style>
-  :root {
-    --bg:#0b0b10;
-    --fg:#eaeaf0;
-    --panel:#000a;
-    --panel-border:#fff2;
-  }
+  :root { --bg:#0b0b10; --fg:#eaeaf0; --panel:#000a; --panel-border:#fff2; }
   html,body { margin:0; padding:0; height:100%; background:var(--bg); color:var(--fg);
     font-family:-apple-system,BlinkMacSystemFont,Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",Meiryo,sans-serif; }
   #wrap { position:fixed; inset:0; display:flex; flex-direction:column; }
@@ -243,24 +238,22 @@
     }
   }
 
-  // ==== スポーンパターン（難易度アップ） ====
+  // ==== スポーンパターン（難易度アップ反映） ====
   let patternId = 0, patternTime = 0;
   function nextPattern(){ patternId = (patternId + 1) % 4; patternTime = 0; }
   function spawnObstacle(dt){
     patternTime += dt;
-
-    // 速度：初速↑、時間増加↑、上限↑
     const baseVy = 3.0 + Math.min(7.5, (elapsed/1000) * 0.06);
     const vy = baseVy * (slowT>0 ? 0.55 : 1.0);
 
     switch(patternId){
-      case 0: // ランダム雨：サイズ幅↑、出現間隔↓
+      case 0:
         if (spawnT<=0){
           rects.push({ x:rand(0,W-24), y:-40, w:rand(12,64), h:rand(12,44), vy:vy });
           spawnT += clamp(720 - elapsed*0.07, 240, 720);
         }
         break;
-      case 1: // レーン落下：サイズ幅↑、間隔↓
+      case 1:
         if (spawnT<=0){
           const lanes = irand(4,6);
           const laneW = W/lanes;
@@ -272,17 +265,17 @@
           spawnT += 460;
         }
         break;
-      case 2: // 壁＋スリット：壁厚みに少し幅、間隔↓
+      case 2:
         if (spawnT<=0){
-          const gap = rand(60,110); // ギャップは据え置き
+          const gap = rand(60,110);
           const slitX = rand(0, W-gap);
-          const h = rand(18,28);    // 壁の縦厚みにばらつき
+          const h = rand(18,28);
           rects.push({ x:0, y:-30, w:slitX, h:h, vy:vy });
           rects.push({ x:slitX+gap, y:-30, w:W-(slitX+gap), h:h, vy:vy });
           spawnT += 820;
         }
         break;
-      case 3: // バースト：サイズ幅↑、間隔↓
+      case 3:
         if (spawnT<=0){
           const cx = rand(40, W-40);
           for(let i=0;i<5;i++){
@@ -318,20 +311,15 @@
     shakeMag = Math.max(shakeMag, mag);
   }
 
-  // ==== 入力（指の上側オフセット 強化版） ====
-  const FINGER_OFFSET_TOUCH = 60; // ← 24px の約2.5倍
+  // ==== 入力（指の上側オフセット 60px） ====
+  const FINGER_OFFSET_TOUCH = 60;
   let useTilt = !!settings.tilt;
 
   function setPlayerFromPointer(e){
     const r = cvs.getBoundingClientRect();
     let x = e.clientX - r.left;
     let y = e.clientY - r.top;
-
-    // タッチ操作のときだけ、指に隠れないように上へずらす
-    if (e.pointerType === 'touch') {
-      y -= FINGER_OFFSET_TOUCH;
-    }
-
+    if (e.pointerType === 'touch') y -= FINGER_OFFSET_TOUCH;
     player.x = clamp(x, player.r, W - player.r);
     player.y = clamp(y, player.r, H - player.r);
   }
@@ -342,7 +330,7 @@
     setPlayerFromPointer(e);
   }, {passive:true});
 
-  // 実験的：ジャイロ操作（iOSは権限が必要な場合あり）
+  // 実験的：ジャイロ操作
   let tiltState = { ok:false, gx:0, gy:0 };
   async function enableTilt(){
     try{
@@ -364,8 +352,7 @@
     }catch(e){ toast('ジャイロ不可'); }
   }
 
-  // ==== 一時停止・設定 ====
-  const settingsRoot = document.getElementById('settings');
+  // ==== 一時停止・設定（※ここが修正点：二重宣言を削除） ====
   function openSettings(){ settingsRoot.style.display = 'flex'; }
   function closeSettingsPanel(){ settingsRoot.style.display = 'none'; }
 
@@ -454,12 +441,8 @@
   function loop(t){
     const dt = Math.min(50, t - tPrev);
     tPrev = t;
-    if (running && !paused){
-      step(dt);
-      draw();
-    } else {
-      draw();
-    }
+    if (running && !paused){ step(dt); draw(); }
+    else { draw(); }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
@@ -473,13 +456,11 @@
 
     if (settings.hue) hue = (hue + dts*0.02) % 360;
 
-    // スポーン
     spawnT -= dts;
     itemT  -= dts;
     if (spawnT<=0) spawnObstacle(dts);
     if (itemT<=0){ spawnItem(); itemT = rand(6000, 9000); }
 
-    // 障害物更新・衝突
     let nearMiss = false;
     for (let i=rects.length-1; i>=0; --i){
       const o = rects[i];
@@ -492,7 +473,6 @@
           audio.noise(0.08, 0.15);
           shake(150, 2.0);
           rects.splice(i,1);
-          continue;
         } else {
           running = false; audio.stopBgm();
           const sc = Math.floor(score);
@@ -513,32 +493,25 @@
     }
     if (nearMiss){ score += 0.3; if (Math.random()<0.04) { audio.beep(1200,0.05,0.12); } }
 
-    // アイテム
     for (let i=items.length-1; i>=0; --i){
       const it = items[i];
       it.y += 1.6 * (dts/16.7);
       if (it.y - it.r > H){ items.splice(i,1); continue; }
       const d2 = dist2(player.x,player.y, it.x,it.y);
-      if (d2 <= (player.r+it.r)*(player.r+it.r)){
-        applyItem(it);
-        items.splice(i,1);
-      }
+      if (d2 <= (player.r+it.r)*(player.r+it.r)){ applyItem(it); items.splice(i,1); }
     }
 
-    // プレイヤー更新（ジャイロ）
     if (useTilt && tiltState.ok){
       player.x = clamp(player.x + tiltState.gx * player.speed * dts, player.r, W-player.r);
       player.y = clamp(player.y + tiltState.gy * player.speed * dts, player.r, H-player.r);
     }
 
-    // タイマー
     if (shieldT>0) shieldT -= dts;
     if (slowT>0)   slowT   -= dts;
     if (multT>0){  multT   -= dts; if (multT<=0){ mult=1; } }
 
     if (shakeT>0)  shakeT  -= dt;
 
-    // UI
     scoreEl.textContent = 'SCORE ' + Math.floor(score);
     metaEl.textContent  = 'x' + mult + (shieldT>0?' · 🛡︎':'') + (slowT>0?' · ⏳':'');
   }
